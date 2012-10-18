@@ -7,18 +7,35 @@ class MoviesController < ApplicationController
   end
 
   def index
+    session_used = false
     @all_ratings = Movie.all_ratings
     @ratings = params[:ratings]
     if @ratings
       @used_ratings = @ratings.keys
-    elsif @used_ratings.nil?
+    elsif session[:used_ratings] || params[:commit] == "Refresh"
+      @used_ratings = session[:used_ratings]
+      session_used = true
+    else
       @used_ratings = @all_ratings
     end
-    @sort = params[:sort]
-    if @sort
-      @movies = Movie.order(@sort).find_all_by_rating(@used_ratings)
+    
+    if params[:sort]
+      @sort = params[:sort]
+      @movies = Movie.order(params[:sort]).find_all_by_rating(@used_ratings)
+    elsif session[:sort]
+      @sort = session[:sort]
+      @movies = Movie.order(session[:sort]).find_all_by_rating(@used_ratings)
+      session_used = true
     else
       @movies = Movie.find_all_by_rating(@used_ratings)
+    end
+    
+    # store the result in session
+    session[:used_ratings] = @used_ratings
+    session[:sort] = @sort
+    # If session was used, redirect to remain restfull
+    if session_used
+      redirect_to movies_path(:sort => @sort, :ratings => Hash[@used_ratings.map {|x| [x,1]}])
     end
   end
 
